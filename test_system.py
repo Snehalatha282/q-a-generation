@@ -20,8 +20,9 @@ def run_tests():
     # 2. PDF Processing
     print("\n[2/5] Testing PDF Processing...")
     processor = AcademicPDFProcessor()
-    sample_pdf = UPLOADS_DIR / "Sample_Operating_Systems_Notes.pdf"
-    assert sample_pdf.exists(), f"Sample PDF missing at {sample_pdf}"
+    sample_pdfs = list(UPLOADS_DIR.glob("*.pdf"))
+    assert sample_pdfs, f"No sample PDF found in {UPLOADS_DIR}"
+    sample_pdf = sample_pdfs[0]
     
     doc_info = processor.process_file(str(sample_pdf))
     print(f"[PASS] Extracted {doc_info['total_pages']} pages and {doc_info['total_chunks']} chunks from {sample_pdf.name}")

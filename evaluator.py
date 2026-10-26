@@ -55,7 +55,7 @@ class StudentAnswerEvaluator:
         rubric_str = json.dumps(scheme.get("components", []), indent=2)
 
         prompt = f"""
-You are an experienced University Professor and Chief Examiner in Computer Science at Siddaganga Institute of Technology (SIT) / VTU.
+You are an experienced University Professor and Chief Academic Examiner in Computer Science.
 Evaluate the following student's written examination answer against the official marking scheme and model answer.
 
 QUESTION: {question}

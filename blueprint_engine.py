@@ -168,7 +168,13 @@ Return ONLY a JSON object with this exact schema:
             extracted_concepts = self._extract_concepts_from_chunks(doc_chunks, doc_name)
 
             for item in extracted_concepts:
-                concept = item["concept"]
+                raw_concept = item["concept"]
+                # Clean prompt-like prefixes and trailing punctuation
+                concept = re.sub(r'^(?:Explain|Describe|Discuss|Define|State|What\s+is|Concept\s+of|Introduction\s+to|Overview\s+of)\s+', '', raw_concept, flags=re.IGNORECASE).strip()
+                concept = re.sub(r'[:\.\s\-]+$', '', concept).strip()
+                if not concept or len(concept) < 3:
+                    continue
+
                 page = item["page"]
                 kind = item["kind"]  # 'heading', 'definition', 'algorithm', 'comparison'
 
@@ -206,9 +212,16 @@ Return ONLY a JSON object with this exact schema:
                             "has_diagram_requirement": False
                         })
 
-                # Formulate 10-Mark Question (Requires Architecture / Diagram)
+                # Formulate 10-Mark Question (Only require diagram if concept is an architecture/hardware/system model)
                 if kind in ['heading', 'algorithm', 'system']:
-                    q10_text = f"Explain {concept} in detail with a neat labeled architecture diagram, operational workflow, and key criteria."
+                    is_arch = kind == 'system' or bool(re.search(r'architecture|system|memory|network|hardware|layer|processor|cpu|model', concept, re.I))
+                    if is_arch:
+                        q10_text = f"Explain {concept} in detail with a neat labeled architecture diagram, operational workflow, and key criteria."
+                        req_diag = True
+                    else:
+                        q10_text = f"Explain {concept} in detail, discussing its core working principles, key properties, and practical applications with a suitable example."
+                        req_diag = False
+
                     if q10_text not in seen_questions:
                         seen_questions.add(q10_text)
                         questions_by_marks[10].append({
@@ -217,12 +230,19 @@ Return ONLY a JSON object with this exact schema:
                             "source_doc": doc_name,
                             "page_reference": page,
                             "core_concept": concept,
-                            "has_diagram_requirement": True
+                            "has_diagram_requirement": req_diag
                         })
 
                 # Formulate 15-Mark Question (Comprehensive Essay for Major Topics)
                 if kind in ['system', 'heading'] and len(doc_chunks) >= 3:
-                    q15_text = f"Provide a comprehensive technical treatise on {concept}: explain its architectural foundations with a labeled diagram, analyze multi-stage execution, and discuss trade-offs and complexity."
+                    is_arch = kind == 'system' or bool(re.search(r'architecture|system|memory|network|hardware|layer|processor|cpu|model', concept, re.I))
+                    if is_arch:
+                        q15_text = f"Provide a comprehensive technical treatise on {concept}: explain its architectural foundations with a labeled diagram, analyze multi-stage execution, and discuss trade-offs and complexity."
+                        req_diag_15 = True
+                    else:
+                        q15_text = f"Provide a comprehensive technical treatise on {concept}: analyze its theoretical foundations, multi-stage operational workflow, and practical trade-offs."
+                        req_diag_15 = False
+
                     if q15_text not in seen_questions and len(questions_by_marks[15]) < 3:
                         seen_questions.add(q15_text)
                         questions_by_marks[15].append({
@@ -231,7 +251,7 @@ Return ONLY a JSON object with this exact schema:
                             "source_doc": doc_name,
                             "page_reference": page,
                             "core_concept": concept,
-                            "has_diagram_requirement": True
+                            "has_diagram_requirement": req_diag_15
                         })
 
         # Ensure we don't overwhelm the UI; limit to top 5-6 per category while keeping diverse topics
@@ -270,8 +290,9 @@ Return ONLY a JSON object with this exact schema:
                 heading_match = re.match(r'^(?:(?:Module|Unit|Chapter)\s+\d+[:\s\-\.]+)?(?:\d+\.[\d\.]*\s+)?([A-Z][\w\s\(\)\/\,\-]+)$', line_str)
                 if heading_match:
                     concept_candidate = heading_match.group(1).strip()
-                    # Clean common noisy prefixes
-                    concept_candidate = re.sub(r'^(?:Concept of|Introduction to|Overview of)\s+', '', concept_candidate, flags=re.IGNORECASE).strip()
+                    # Clean common noisy prefixes and prompt verbs
+                    concept_candidate = re.sub(r'^(?:Explain|Describe|Discuss|Define|State|What\s+is|Concept\s+of|Introduction\s+to|Overview\s+of)\s+', '', concept_candidate, flags=re.IGNORECASE).strip()
+                    concept_candidate = re.sub(r'[:\.\s\-]+$', '', concept_candidate).strip()
                     if len(concept_candidate) >= 4 and concept_candidate.lower() not in seen and not concept_candidate.isdigit():
                         seen.add(concept_candidate.lower())
                         is_algo = bool(re.search(r'algorithm|scheduling|replacement|protocol|sorting', concept_candidate, re.I))
@@ -293,6 +314,7 @@ Return ONLY a JSON object with this exact schema:
                     term = match.group(1).strip()
                     # Clean trailing prepositions or short words
                     term = re.sub(r'\b(?:and|or|in|of|for|with)\b.*$', '', term).strip()
+                    term = re.sub(r'[:\.\s\-]+$', '', term).strip()
                     if 3 < len(term) < 40 and term.lower() not in seen and not any(term.lower() in s for s in seen):
                         # Filter out common false positives
                         if term.lower() not in ['this', 'that', 'there', 'it', 'these', 'those', 'such', 'what', 'which', 'an', 'the']:
@@ -310,10 +332,12 @@ Return ONLY a JSON object with this exact schema:
             first_text = chunks[0].get("text", "")
             first_lines = [l.strip() for l in first_text.splitlines() if 5 < len(l.strip()) < 60]
             for l in first_lines[:3]:
-                if l.lower() not in seen:
-                    seen.add(l.lower())
+                clean_l = re.sub(r'^(?:Explain|Describe|Discuss|Define|State|What\s+is|Concept\s+of|Introduction\s+to|Overview\s+of)\s+', '', l, flags=re.IGNORECASE).strip()
+                clean_l = re.sub(r'[:\.\s\-]+$', '', clean_l).strip()
+                if clean_l and len(clean_l) >= 4 and clean_l.lower() not in seen:
+                    seen.add(clean_l.lower())
                     extracted.append({
-                        "concept": l,
+                        "concept": clean_l,
                         "page": chunks[0].get("page", 1),
                         "kind": 'heading'
                     })

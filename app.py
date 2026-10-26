@@ -22,7 +22,7 @@ init_db()
 
 # Streamlit Page Configuration
 st.set_page_config(
-    page_title="AI Academic Assistant | SIT Tumakuru",
+    page_title="AI Academic Assistant",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -130,11 +130,43 @@ st.markdown("""
     }
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 6px;
     }
     .stTabs [data-baseweb="tab"] {
         padding: 10px 18px;
-        border-radius: 8px 8px 0 0;
+        border-radius: 8px;
         font-weight: 600;
+        background: #f8fafc;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+        opacity: 0.8;
+        box-shadow: none;
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background: #f1f5f9;
+        color: #334155;
+        border: 1px solid #cbd5e1;
+        opacity: 1;
+        box-shadow: none;
+    }
+    div.stButton > button {
+        background: #f8fafc !important;
+        color: #334155 !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+    }
+    div.stButton > button:hover {
+        background: #f1f5f9 !important;
+        border-color: #cbd5e1 !important;
+        color: #334155 !important;
+    }
+    div.stButton > button:focus:not(:active) {
+        box-shadow: none !important;
+        outline: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -163,45 +195,11 @@ if "user_question_input" not in st.session_state:
 if "target_marks_input" not in st.session_state:
     st.session_state.target_marks_input = 10
 
-sample_pdf_path = UPLOADS_DIR / "Sample_Operating_Systems_Notes.pdf"
-
-# Helper function to load demo mode
-def load_sample_demo_mode():
-    if sample_pdf_path.exists():
-        processor = AcademicPDFProcessor()
-        doc_info = processor.process_file(str(sample_pdf_path), "Sample_Operating_Systems_Notes.pdf")
-        st.session_state.all_chunks = doc_info["chunks"]
-        st.session_state.doc_metadata = [doc_info]
-        st.session_state.is_demo_mode = True
-        st.session_state.rag_engine.build_index(st.session_state.all_chunks)
-        
-        # Build blueprint for demo
-        bp_engine = AcademicBlueprintEngine(
-            api_key=os.getenv("GEMINI_API_KEY"),
-            model_name="gemini-2.5-flash"
-        )
-        st.session_state.blueprint_data = bp_engine.generate_blueprint(
-            st.session_state.doc_metadata,
-            st.session_state.all_chunks
-        )
-        st.session_state.blueprint_fingerprint = compute_doc_fingerprint(st.session_state.doc_metadata)
-
-# On initial first load, load sample demo if nothing exists
-if not st.session_state.all_chunks and "initial_loaded" not in st.session_state:
-    st.session_state.initial_loaded = True
-    load_sample_demo_mode()
-
 # Header Banner
 st.markdown(f"""
 <div class="main-header">
-    <h1>🏛️ {PROJECT_INFO['institution']}</h1>
-    <h3>{PROJECT_INFO['department']} • Mini Project ({PROJECT_INFO['academic_year']})</h3>
-    <div style="font-size: 18px; font-weight: 600; color: #ffffff; margin-bottom: 6px;">
-        📖 {PROJECT_INFO['title']}
-    </div>
-    <div class="team-badge-container">
-        {"".join([f'<div class="team-badge">👤 {m["name"]} ({m["usn"]})</div>' for m in PROJECT_INFO['team']])}
-    </div>
+    <h1>🎓 AI Academic Assistant</h1>
+    <h3>Intelligent PDF Analysis & Scheme-Based Answer Generation</h3>
 </div>
 """, unsafe_allow_html=True)
 
@@ -307,10 +305,6 @@ with st.sidebar:
 
     # Document management buttons
     st.subheader("🛠️ Document Actions")
-    if st.button("🧪 Load Sample OS Notes (Demo Mode)", use_container_width=True):
-        load_sample_demo_mode()
-        st.rerun()
-
     if st.button("🗑️ Clear All Indexed Documents", use_container_width=True):
         st.session_state.all_chunks = []
         st.session_state.doc_metadata = []
@@ -375,20 +369,22 @@ with tab1:
             default_marks_idx = [2, 5, 10, 15].index(preset_target)
 
         target_marks = st.selectbox(
-            "Target Marks (SIT/VTU Scheme):",
+            "Target Marks Scheme:",
             options=[2, 5, 10, 15],
             index=default_marks_idx,
             format_func=lambda m: f"{m} Marks — {MARK_SCHEMES[m]['label'].split('(')[1].replace(')', '')}"
         )
     with col_m2:
         scheme_info = MARK_SCHEMES[target_marks]
-        st.info(f"**Expected Standard**: {scheme_info['expected_length']} | **Diagram**: {scheme_info['diagram_required']}")
+        is_diag_req = DiagramEngine.should_include_diagram(user_question, target_marks) if user_question.strip() else False
+        diag_status = "Required by Question" if is_diag_req else "Not Required"
+        st.info(f"**Expected Standard**: {scheme_info['expected_length']} | **Diagram**: {diag_status}")
 
     if st.button("🚀 Generate Mark-Appropriate Answer & Scheme", type="primary", use_container_width=True):
         if not user_question.strip():
             st.warning("Please enter an academic question.")
         elif not st.session_state.all_chunks:
-            st.warning("Please upload a course document in the sidebar or load the sample demo notes.")
+            st.warning("Please upload a course document in the sidebar.")
         else:
             with st.spinner(f"Retrieving semantic chunks and synthesizing {target_marks}-Mark answer..."):
                 top_k = 3 if target_marks == 2 else (5 if target_marks == 5 else 7)
@@ -443,8 +439,8 @@ with tab1:
         st.markdown(f"### ✍️ Model Answer ({ans_data['marks']} Marks Standard)")
         st.markdown(ans_data["answer_markdown"])
 
-        # Labeled Diagram Card
-        if ans_data.get("diagram_needed") and ans_data.get("diagram_code"):
+        # Labeled Diagram Card - only displayed if strictly required according to question
+        if ans_data.get("diagram_needed") and ans_data.get("diagram_code", "").strip():
             st.divider()
             diag_title = ans_data.get("diagram_title", "Neat Labeled Architecture / Workflow Diagram")
             st.markdown(f"### 📊 {diag_title}")
@@ -475,24 +471,20 @@ with tab1:
                 """, unsafe_allow_html=True)
 
         # Export Button
-        download_content = f"""# {PROJECT_INFO['institution']}
-## {PROJECT_INFO['title']}
-### Question: {ans_data['question']} ({ans_data['marks']} Marks)
-
----
-### EVALUATION SCHEME
-{json.dumps(ans_data.get('scheme', {}), indent=2)}
-
----
-### MODEL ANSWER
-{ans_data['answer_markdown']}
-
----
-### DIAGRAM (MERMAID CODE)
-```mermaid
-{ans_data.get('diagram_code', '')}
-```
-"""
+        download_parts = [
+            f"# {PROJECT_INFO['title']}",
+            f"### Question: {ans_data['question']} ({ans_data['marks']} Marks)",
+            "\n---\n### EVALUATION SCHEME",
+            json.dumps(ans_data.get('scheme', {}), indent=2),
+            "\n---\n### MODEL ANSWER",
+            ans_data['answer_markdown']
+        ]
+        if ans_data.get("diagram_needed") and ans_data.get("diagram_code", "").strip():
+            download_parts.extend([
+                "\n---\n### DIAGRAM (MERMAID CODE)",
+                f"```mermaid\n{ans_data['diagram_code']}\n```"
+            ])
+        download_content = "\n".join(download_parts)
         st.download_button(
             label="💾 Download Answer Sheet & Scheme (Markdown)",
             data=download_content,
@@ -510,30 +502,20 @@ with tab2:
 
     eval_q = st.text_input(
         "Examination Question:",
-        value=st.session_state.selected_question_for_eval or (default_q or "Enter question to evaluate"),
-        placeholder="Enter question"
+        value=st.session_state.selected_question_for_eval or default_q,
+        placeholder="Enter question to evaluate..."
     )
     
-    col_ev_m1, col_ev_m2 = st.columns([1, 1])
-    with col_ev_m1:
-        eval_marks = st.selectbox(
-            "Evaluation Mark Base:",
-            options=[2, 5, 10, 15],
-            index=2,
-            key="eval_marks_select"
-        )
-    with col_ev_m2:
-        if st.button("📋 Load Sample Student Answer for Testing"):
-            st.session_state.sample_student_input = (
-                f"Regarding {eval_q}:\n"
-                "This concept provides core functional capability and data management. "
-                "It consists of distinct modular components operating across sequential stages. "
-                "The primary advantages are modular design and predictable latency."
-            )
+    eval_marks = st.selectbox(
+        "Evaluation Mark Base:",
+        options=[2, 5, 10, 15],
+        index=2,
+        key="eval_marks_select"
+    )
 
     student_text = st.text_area(
         "Student Submitted Answer:",
-        value=st.session_state.get("sample_student_input", ""),
+        value="",
         height=180,
         placeholder="Write or paste the student's answer here..."
     )

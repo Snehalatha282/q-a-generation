@@ -7,26 +7,59 @@ class DiagramEngine:
     Supports Mermaid.js, SVG rendering, and ASCII diagrams for academic answers.
     """
 
-    DIAGRAM_KEYWORDS = [
-        "diagram", "architecture", "flowchart", "workflow", "lifecycle",
-        "pipeline", "layers", "stack", "model", "schema", "protocol",
-        "state", "process", "structure", "hierarchy", "tree", "network",
-        "paging", "segmentation", "scheduling", "deadlock", "tcp/ip",
-        "osi", "cache", "von neumann", "von-neumann", "pipeline", "compiler"
+    EXPLICIT_DIAGRAM_PATTERNS = [
+        r'\bdiagrams?\b',
+        r'\bflow\s*charts?\b',
+        r'\bschematics?\b',
+        r'\barchitectures?\b',
+        r'\bblock\s*diagrams?\b',
+        r'\bdraw\b',
+        r'\bdrawing\b',
+        r'\bsketch(?:es)?\b',
+        r'\bstate\s*transition\s*diagrams?\b',
+        r'\bsequence\s*diagrams?\b',
+        r'\btiming\s*diagrams?\b',
+        r'\bcircuit\s*diagrams?\b',
+        r'\bgraphical\s*representation\b',
+        r'\billustrate\s+(?:it\s+)?with\s+(?:a\s+)?diagram\b',
+        r'\bdiagrammatic(?:ally)?\b'
+    ]
+
+    NEGATIVE_DIAGRAM_PATTERNS = [
+        r'\bwithout\s+(?:any\s+)?diagrams?\b',
+        r'\bno\s+diagrams?\b',
+        r'\bexclude\s+diagrams?\b',
+        r'\bdo\s+not\s+draw\b',
+        r'\bwithout\s+(?:a\s+)?sketch\b',
+        r'\bpurely\s+theoretical(?:ly)?\b'
     ]
 
     @classmethod
-    def should_include_diagram(cls, question: str, marks: int, forced: bool = False) -> bool:
-        """Determines if a diagram is necessary or recommended."""
+    def should_include_diagram(cls, question: str, marks: int = 10, forced: bool = False) -> bool:
+        """
+        Determines if a diagram is strictly required according to the question.
+        Returns True ONLY if the question explicitly asks for a diagram, schematic,
+        flowchart, architecture, or drawing. If not requested, returns False.
+        """
         if forced:
             return True
-        if marks >= 10:
-            return True
-        q_lower = question.lower()
-        if any(kw in q_lower for kw in cls.DIAGRAM_KEYWORDS):
-            return True
-        if marks == 5 and any(w in q_lower for w in ["explain", "working", "how", "steps", "types"]):
-            return True
+
+        if not question or not question.strip():
+            return False
+
+        q_lower = question.lower().strip()
+
+        # Check for explicit negative indicators (e.g., 'without diagram')
+        for neg_pat in cls.NEGATIVE_DIAGRAM_PATTERNS:
+            if re.search(neg_pat, q_lower):
+                return False
+
+        # Check if question explicitly requests a diagram, architecture, or drawing
+        for pat in cls.EXPLICIT_DIAGRAM_PATTERNS:
+            if re.search(pat, q_lower):
+                return True
+
+        # If the question does not ask for a diagram, do not require any diagram
         return False
 
     @classmethod
@@ -177,7 +210,7 @@ class DiagramEngine:
     Running --> Terminated: Exit / Completed
     Terminated --> [*]"""
 
-        elif "database" in topic_lower or "er" in topic_lower or "acid" in topic_lower:
+        elif any(w in topic_lower for w in ["database", "er", "acid"]):
             return """flowchart TD
     subgraph Transaction ["ACID Properties"]
         A["Atomicity<br/>(All or Nothing - Rollback/Commit)"]
@@ -190,14 +223,29 @@ class DiagramEngine:
     style I fill:#e0e7ff,stroke:#6366f1
     style D fill:#dcfce7,stroke:#10b981"""
 
-        else:
-            return f"""flowchart TD
-    subgraph Architecture ["System Architecture & Workflow"]
-        Input["Academic Input / Question Context"] --> Process["Core Processing & Algorithm Execution"]
-        Process --> Components["Functional Components / Sub-modules"]
-        Components --> Output["Verified Result / Evaluated Output"]
+        elif any(w in topic_lower for w in ["regular expression", "regex", "automata", "dfa", "nfa", "finite state"]):
+            return """stateDiagram-v2
+    direction LR
+    [*] --> q0: Start
+    q0 --> q1: Read 'a'
+    q1 --> q1: Loop 'a' (Kleene Star *)
+    q1 --> q2: Read 'b'
+    q2 --> [*]: Accept / Match"""
+
+        elif any(w in topic_lower for w in ["sorting", "merge sort", "divide and conquer"]):
+            return """flowchart TD
+    subgraph Divide ["Divide Phase"]
+        A["Unsorted Array [38, 27, 43, 3, 9, 82, 10]"] --> B1["Left [38, 27, 43, 3]"]
+        A --> B2["Right [9, 82, 10]"]
     end
-    style Input fill:#e0f2fe,stroke:#0284c7
-    style Process fill:#fef3c7,stroke:#d97706
-    style Components fill:#f3e8ff,stroke:#9333ea
-    style Output fill:#dcfce7,stroke:#16a34a"""
+    subgraph Conquer ["Conquer & Merge"]
+        B1 --> C1["Sorted Left [3, 27, 38, 43]"]
+        B2 --> C2["Sorted Right [9, 10, 82]"]
+        C1 --> D["Final Merged & Sorted Array [3, 9, 10, 27, 38, 43, 82]"]
+        C2 --> D
+    end
+    style A fill:#fee2e2,stroke:#ef4444
+    style D fill:#dcfce7,stroke:#16a34a"""
+
+        else:
+            return ""

@@ -16,19 +16,11 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Project Information
 PROJECT_INFO = {
-    "institution": "Siddaganga Institute of Technology - Tumakuru",
-    "department": "Department of Computer Science and Engineering",
     "title": "AI Academic Assistant: Intelligent PDF Analysis and Scheme-Based Answer Generation",
-    "academic_year": "2025-26",
-    "team": [
-        {"name": "Shamitha H S", "usn": "1SI24CS161", "mobile": "7975348582"},
-        {"name": "Skarzang Lamo", "usn": "1SI24CS172", "mobile": "7006820598"},
-        {"name": "Snehalatha", "usn": "1SI24CS174", "mobile": "8073815036"},
-        {"name": "Sharanya H M", "usn": "1SI24CS213", "mobile": "8310968958"}
-    ]
+    "description": "Intelligent academic question answering, rubrics calculation, and student evaluation engine."
 }
 
-# Marking Scheme Specifications according to SIT/VTU guidelines
+# Marking Scheme Specifications according to standard academic guidelines
 MARK_SCHEMES = {
     2: {
         "label": "2 Marks (Short Answer)",

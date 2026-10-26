@@ -8,9 +8,8 @@ def create_cn_sample_pdf(output_path: str):
     # Page 1: Module 1 - OSI Reference Model & Physical Layer
     page1 = doc.new_page()
     rect = fitz.Rect(50, 50, 550, 750)
-    text1 = """SIDDAGANGA INSTITUTE OF TECHNOLOGY
-DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING
-COURSE: COMPUTER NETWORKS (21CS52)
+    text1 = """DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING
+COURSE: COMPUTER NETWORKS
 
 MODULE 1: NETWORK ARCHITECTURES AND OSI MODEL
 

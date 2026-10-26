@@ -1,20 +1,5 @@
 # AI Academic Assistant: Intelligent PDF Analysis and Scheme-Based Answer Generation
 
-**Department of Computer Science and Engineering**  
-**Siddaganga Institute of Technology, Tumakuru – 572103**  
-*Academic Year 2025–26*
-
----
-
-## 👥 Student Team Details
-
-| Name | USN | Mobile |
-| :--- | :--- | :--- |
-| **Shamitha H S** | `1SI24CS161` | 7975348582 |
-| **Skarzang Lamo** | `1SI24CS172` | 7006820598 |
-| **Snehalatha** | `1SI24CS174` | 8073815036 |
-| **Sharanya H M** | `1SI24CS213` | 8310968958 |
-
 ---
 
 ## 📌 Problem Statement
@@ -73,8 +58,8 @@ ai-academic-assistant/
 ├── evaluator.py                # Student answer auto-grader and feedback engine
 ├── diagram_engine.py           # Programmatic Mermaid diagram synthesizer
 ├── database.py                 # SQLite database layer for persistence
-├── generate_sample_pdf.py      # Creates standard SIT OS course notes PDF
-├── generate_cn_sample_pdf.py   # Creates standard SIT Computer Networks notes PDF
+├── generate_sample_pdf.py      # Creates sample OS course notes PDF
+├── generate_cn_sample_pdf.py   # Creates sample Computer Networks notes PDF
 ├── test_system.py              # Automated 5-stage system test suite
 ├── test_blueprint_dynamic.py   # Dynamic blueprint verification suite (6 tests)
 ├── verify_features.py          # End-to-end UI features test suite
